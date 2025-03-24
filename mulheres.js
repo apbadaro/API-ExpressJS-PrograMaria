@@ -10,15 +10,16 @@ const Mulher = require("./mulherModel"); // aqui estou importando o modelo de mu
 const app = express(); // aqui estou iniciando o app
 app.use(express.json()); // aqui estou configurando o app para usar JSON
 app.use(cors()); // libera esse app para ser consumida por qualquer frontend
-const porta = 3333; // aqui estou definindo a porta
+const porta = process.env.PORT || 3333; // aqui estou definindo a porta
 
 // GET
 async function mostraMulheres(req, res) {
   try {
-    const mulheresVindasDoBD = await Mulher.find(); // aqui estou buscando todas as mulheres no BD
-    res.json(mulheresVindasDoBD); // aqui estou retornando as mulheres encontradas
+    const mulheresVindasDoBD = await Mulher.find();
+    res.json(mulheresVindasDoBD);
   } catch (erro) {
-    console.log(erro); // aqui estou tratando o erro
+    console.log(erro);
+    res.status(500).json({ error: "Erro interno ao buscar mulheres" });
   }
 }
 
@@ -32,17 +33,23 @@ async function adicionaMulher(req, res) {
   });
 
   try {
-    const mulherSalva = await novaMulher.save(); // aqui estou salvando a nova mulher no BD
-    res.status(201).json(mulherSalva); // aqui estou retornando a mulher salva
+    const mulherSalva = await novaMulher.save();
+    res.status(201).json(mulherSalva);
   } catch (erro) {
-    console.log(erro); // aqui estou tratando o erro
+    console.log(erro);
+    res.status(500).json({ error: "Erro interno ao adicionar mulher" });
   }
 }
 
 // PATCH
 async function atualizaMulher(req, res) {
   try {
-    const mulherEncontrada = await Mulher.findById(req.params.id); // aqui estou buscando a mulher no BD
+    const mulherEncontrada = await Mulher.findById(req.params.id);
+
+    if (!mulherEncontrada) {
+      return res.status(404).json({ error: "Mulher não encontrada" });
+    }
+
     if (req.body.nome) {
       mulherEncontrada.nome = req.body.nome;
     }
@@ -56,20 +63,27 @@ async function atualizaMulher(req, res) {
       mulherEncontrada.citacao = req.body.citacao;
     }
 
-    const mulherAtualizadaNoBD = await mulherEncontrada.save(); // aqui estou salvando a mulher atualizada no BD
-    res.json(mulherAtualizadaNoBD); // aqui estou retornando a mulher atualizada
+    const mulherAtualizadaNoBD = await mulherEncontrada.save();
+    res.json(mulherAtualizadaNoBD);
   } catch (erro) {
-    console.log(erro); // aqui estou tratando o erro
+    console.log(erro);
+    res.status(500).json({ error: "Erro interno ao atualizar mulher" });
   }
 }
 
 // DELETE
 async function apagaMulher(req, res) {
   try {
-    await Mulher.findByIdAndDelete(req.params.id); // aqui estou apagando a mulher no BD
-    res.json({ mensagem: "Mulher apagada com sucesso!" }); // aqui estou retornando a mensagem de sucesso
-  } catch {
-    console.log(erro); // aqui estou tratando o erro
+    const resultado = await Mulher.findByIdAndDelete(req.params.id);
+
+    if (!resultado) {
+      return res.status(404).json({ error: "Mulher não encontrada" });
+    }
+
+    res.json({ mensagem: "Mulher apagada com sucesso!" });
+  } catch (erro) {
+    console.log(erro);
+    res.status(500).json({ error: "Erro interno ao apagar mulher" });
   }
 }
 
@@ -78,9 +92,19 @@ function mostraPorta() {
   console.log(`Servidor criado e rodando na porta: ${porta}`);
 }
 
-// aqui estou iniciando o servidor
-app.listen(porta, mostraPorta); // configurando a rota GET '/mulheres'
-app.use(router.post("/mulheres", adicionaMulher)); // configurando a rota POST '/mulheres'
-app.use(router.get("/mulheres", mostraMulheres)); // servidor ouvindo a porta
-app.use(router.patch("/mulheres/:id", atualizaMulher)); // configurando a rota PATCH '/mulheres/:id'
-app.use(router.delete("/mulheres/:id", apagaMulher)); // configurando a rota DELETE '/mulheres/:id'
+// Configurando as rotas
+router.get("/mulheres", mostraMulheres);
+router.post("/mulheres", adicionaMulher);
+router.patch("/mulheres/:id", atualizaMulher);
+router.delete("/mulheres/:id", apagaMulher);
+
+// Usando o router
+app.use(router);
+
+// PORTA
+function mostraPorta() {
+  console.log(`Servidor criado e rodando na porta: ${porta}`);
+}
+
+// Iniciando o servidor
+app.listen(porta, mostraPorta);
